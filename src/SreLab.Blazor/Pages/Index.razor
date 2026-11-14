@@ -1,0 +1,16 @@
+@page "/"
+@inject HttpClient Http
+<h3>SRE Lab - Simulate + Detect Incident</h3>
+<p><b>Story:</b> Checkout / NOTAM service is healthy (p99 ~120ms). Then Deploy #482 ships. Service spikes to 850ms, errors 4%. Airflow should catch it in 5 min, Analyst recommends ROLLBACK.</p>
+<button @onclick="GenNormal">1. Simulate Normal Traffic (1000 logs, healthy)</button>
+<button @onclick="GenIncident">2. Inject Incident - Deploy #482 (1000 logs, slow + errors)</button>
+<button @onclick="Detect">3. Detect Incident (via Airflow logic)</button>
+<button @onclick="Analyst">4. Ask Analyst Agent: Should We Rollback?</button>
+@if (!string.IsNullOrEmpty(msg)) { <pre style="background:#fff7e6;padding:16px;white-space:pre-wrap">@msg</pre> }
+@code {
+  private string? msg;
+  private async Task GenNormal(){ var r = await Http.PostAsJsonAsync("/api/logs/generate", new { Service="checkout", Count=1000, InjectIncident=false, DeployId="deploy-481" }); msg = "Normal logs generated: " + await r.Content.ReadAsStringAsync(); }
+  private async Task GenIncident(){ var r = await Http.PostAsJsonAsync("/api/logs/generate", new { Service="checkout", Count=1000, InjectIncident=true, DeployId="deploy-482" }); msg = "Incident logs generated (Deploy #482): " + await r.Content.ReadAsStringAsync(); }
+  private async Task Detect(){ var r = await Http.PostAsync("/api/incidents/detect", null); msg = "Incident Report:\n" + await r.Content.ReadAsStringAsync(); }
+  private async Task Analyst(){ var r = await Http.PostAsync("/api/analyst/report?service=checkout", null); msg = "Analyst Agent:\n" + await r.Content.ReadAsStringAsync(); }
+}

@@ -1,0 +1,7 @@
+bin/
+obj/
+wwwroot/_framework/
+*.user
+.vs/
+*.md
+.env

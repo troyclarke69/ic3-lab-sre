@@ -1,0 +1,17 @@
+using SreLab.Api;
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddEndpointsApiExplorer(); builder.Services.AddSwaggerGen();
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+builder.Services.AddSingleton<ILogStore, InMemoryLogStore>();
+builder.Services.AddSingleton<IKafkaProducer, KafkaProducer>();
+builder.Services.AddHostedService<KafkaLogConsumer>();
+builder.Services.AddSingleton<IIncidentService, IncidentService>();
+builder.Services.AddSingleton<IAnalystAgent, AnalystAgentService>();
+var app = builder.Build(); app.UseCors(); app.UseSwagger(); app.UseSwaggerUI();
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapPost("/api/logs/generate", async (GenerateLogsRequest req, ILogStore store, IKafkaProducer kafka) => { var n = await store.GenerateAsync(req.Service, req.Count, req.InjectIncident, req.DeployId, kafka); return Results.Ok(new { generated = n, service = req.Service, incident = req.InjectIncident }); });
+app.MapGet("/api/logs", (ILogStore store) => Results.Ok(store.All()));
+app.MapPost("/api/incidents/detect", async (IIncidentService svc) => Results.Ok(await svc.DetectAsync()));
+app.MapGet("/api/incidents", (IIncidentService svc) => Results.Ok(svc.All()));
+app.MapPost("/api/analyst/report", async (string service, IIncidentService svc, IAnalystAgent analyst) => { var inc = svc.Latest(service) ?? await svc.DetectAsync(service); return Results.Ok(await analyst.AnalyzeAsync(inc)); });
+app.Run();

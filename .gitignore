@@ -1,0 +1,9 @@
+bin/
+obj/
+out/
+publish/
+.vs/
+.env
+*.log
+kafka-data/
+postgres-data/
